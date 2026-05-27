@@ -46,6 +46,7 @@ jobs:
         uses: actions/checkout@main
         with:
           path: kernel
+          submodules: recursive
 
       - name: 缓存Clang
         id: cache-clang
