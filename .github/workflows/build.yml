@@ -49,13 +49,16 @@ jobs:
           submodules: false
 
       - name: 拉取子模块完整历史并转换为目录
-        working-directory: kernel  # 确保在 kernel 目录下执行以下命令
+        working-directory: kernel
         run: |
           git submodule update --init --recursive
           rm ReSukiSU/.git
           mv .git/modules/ReSukiSU ReSukiSU/.git
+          
+          # 使用 sed 直接修改文本，删除失效的 worktree 配置（绕过 git 本身的路径检查）
+          sed -i '/worktree =/d' ReSukiSU/.git/config
+          
           cd ReSukiSU
-          git config --unset core.worktree
           echo "=== 验证子模块历史记录 ==="
           git log --oneline -n 5
 
