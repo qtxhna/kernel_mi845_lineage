@@ -41,15 +41,15 @@ jobs:
           curl -LSs http://ftp.debian.org/debian/pool/main/m/make-dfsg/make_4.4.1-2_amd64.deb -o make.deb
           sudo apt-get install -y -q ./make.deb
           rm ./make.deb
-
       - name: 同步仓库
         uses: actions/checkout@v4
         with:
           path: kernel
-        fetch-depth: 1
-        submodules: false
+          fetch-depth: 1
+          submodules: false
 
       - name: 拉取子模块完整历史并转换为目录
+        working-directory: kernel  # 确保在 kernel 目录下执行以下命令
         run: |
           git submodule update --init --recursive
           rm ReSukiSU/.git
