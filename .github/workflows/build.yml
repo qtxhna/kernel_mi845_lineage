@@ -43,10 +43,21 @@ jobs:
           rm ./make.deb
 
       - name: 同步仓库
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
         with:
           path: kernel
-          submodules: recursive
+        fetch-depth: 1
+        submodules: false
+
+      - name: 拉取子模块完整历史并转换为目录
+        run: |
+          git submodule update --init --recursive
+          rm ReSukiSU/.git
+          mv .git/modules/ReSukiSU ReSukiSU/.git
+          cd ReSukiSU
+          git config --unset core.worktree
+          echo "=== 验证子模块历史记录 ==="
+          git log --oneline -n 5
 
       - name: 缓存Clang
         id: cache-clang
