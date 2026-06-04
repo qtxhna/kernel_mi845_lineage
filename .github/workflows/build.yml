@@ -46,7 +46,7 @@ jobs:
         with:
           path: kernel
           fetch-depth: 1
-          submodules: false
+          submodules: recursive
 
 
       - name: 缓存Clang
