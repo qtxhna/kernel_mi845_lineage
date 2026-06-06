@@ -16,6 +16,8 @@ jobs:
     name: 编译内核
     permissions: { contents: write }
     runs-on: ubuntu-latest
+    outputs:
+      resukisu_ver: ${{ steps.calc_ver.outputs.resukisu_ver }}
     strategy:
       matrix:
         device:
@@ -61,6 +63,10 @@ jobs:
           cd ReSukiSU
           echo "=== 验证子模块历史记录 ==="
           git log --oneline -n 5
+
+          SUBMODULE_COUNT=$(git rev-list --count HEAD)
+          VERSION_NUM=$((SUBMODULE_COUNT + 30700))
+          echo "resukisu_ver=$VERSION_NUM" >> $GITHUB_OUTPUT
 
       - name: 缓存Clang
         id: cache-clang
@@ -144,35 +150,89 @@ jobs:
           path: ak3/Anykernel3-${{ matrix.device }}.zip
 
   release:
-    name: 发布
+    name: 发布与通知
     if: github.event_name == 'push'
-    permissions: { contents: write }
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
-    needs: build
+    needs: build-kernel
+
     steps:
+      # --------- 1. 下载内核编译产物 ---------
       - name: 获取构建产物
-        uses: actions/download-artifact@main
+        uses: actions/download-artifact@v4
         with:
           path: kernel
-          pattern: kernel-*
+          pattern: Anykernel3-*
           merge-multiple: true
 
+      # --------- 2. 生成上海时间与时间戳 ---------
       - name: 获取当前时间
         id: time
         run: |
           NOW=$(date +%s)
-          TIME_STR=$(TZ='Asia/Shanghai' date -d "@$NOW" +'%Y%m%d%H%M')
+          TIME_STR=$(TZ='Asia/Shanghai' date -d "@$NOW" +'%Y-%m-%d %H:%M')
           echo "timestamp=$NOW" >> $GITHUB_OUTPUT
           echo "time=$TIME_STR" >> $GITHUB_OUTPUT
 
-      - name: 发布
-        uses: softprops/action-gh-release@master
+      # --------- 3. 创建 GitHub Release 并上传文件 ---------
+      - name: 发布到 GitHub Release
+        uses: softprops/action-gh-release@v2
         id: release
         with:
           tag_name: rel-${{ steps.time.outputs.timestamp }}
-          name: Kernel build ${{ steps.time.outputs.time }}
+          name: Kernel Build [${{ steps.time.outputs.time }}]
           prerelease: ${{ startsWith(github.ref_name, 'dev/') }}
           files: |
             kernel/*
 
-      
+# --------- 4. 组装美化版消息并发送至 Telegram ---------
+      - name: 发送 Telegram 通知
+        continue-on-error: true
+        run: |
+          # 提取并处理提交 ID
+          IDS=(${{ join(github.event.commits.*.id, ' ') }})
+          MAX=5
+          if [ "${#IDS[@]}" -gt "$MAX" ]; then
+            COMMIT_IDS_TEXT="$(printf "• %s\n" "${IDS[@]:0:$MAX}"; echo "• ...更多提交请查看对比差异")"
+          else
+            COMMIT_IDS_TEXT="$(printf "• %s\n" "${IDS[@]}")"
+          fi
+
+          # 重新设计的 HTML 多机型消息排版
+          MSG="<b>🚀 内核编译自动发布成功！</b>
+          ──────────────────────
+          📱 <b>适用设备 (SDM845 通用内核):</b>
+            ├─ POCO F1 <code>(beryllium)</code>
+            ├─ 小米 MIX 2S <code>(polaris)</code> / MIX 3 <code>(perseus)</code>
+            └─ 小米 8 标准/探索/Pro <code>(dipper / ursa / equuleus)</code>
+          📦 <b>源码仓库:</b> <code>${{ github.repository }}</code>
+          🔢 <b>ReSukiSU版本号:</b> <code>v${{ needs.build-kernel.outputs.resukisu_ver }}</code>
+          ⏰ <b>编译时间:</b> <code>${{ steps.time.outputs.time }}</code>
+
+          🛠️ <b>包含的提交摘要:</b>
+          <pre>$COMMIT_IDS_TEXT</pre>
+          ──────────────────────
+          🔔 <i>提示：点击下方按钮即可前往 GitHub Release 获取最新的卡刷包或镜像文件。</i>"
+
+          # 链接预览与内联按钮配置
+          PREVIEW_OPTIONS="{ \
+            \"url\": \"${{ steps.release.outputs.url }}\", \
+            \"prefer_small_media\": true, \
+            \"show_above_text\": true \
+          }"
+
+          BUTTONS="{\"inline_keyboard\": [ [ \
+            { \"text\": \"📥 下载内核产物\", \"url\": \"${{ steps.release.outputs.url }}\" }, \
+            { \"text\": \"🔍 对比代码差异\", \"url\": \"${{ github.event.compare }}\" } \
+          ] ] }"
+
+          # 发送消息（参数已全部完整补齐，无遗漏）
+          curl -LSs -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+                -d "chat_id=${{ vars.TELEGRAM_CHAT_ID }}" \
+                -d "message_thread_id=${{ vars.TELEGRAM_MESSAGE_THREAD_ID }}" \
+                -d "parse_mode=HTML" \
+                --data-urlencode "text=$MSG" \
+                -d "link_preview_options=$PREVIEW_OPTIONS" \
+                -d "reply_markup=$BUTTONS" \
+                # -o response.txt
