@@ -155,7 +155,7 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    needs: build-kernel
+    needs: build
 
     steps:
       # --------- 1. 下载内核编译产物 ---------
@@ -207,7 +207,7 @@ jobs:
             ├─ 小米 MIX 2S <code>(polaris)</code> / MIX 3 <code>(perseus)</code>
             └─ 小米 8 标准/探索/Pro <code>(dipper / ursa / equuleus)</code>
           📦 <b>源码仓库:</b> <code>${{ github.repository }}</code>
-          🔢 <b>ReSukiSU版本号:</b> <code>v${{ needs.build-kernel.outputs.resukisu_ver }}</code>
+          # 🔢 <b>ReSukiSU版本号:</b> <code>v${{ needs.build.outputs.resukisu_ver }}</code>
           ⏰ <b>编译时间:</b> <code>${{ steps.time.outputs.time }}</code>
 
           🛠️ <b>包含的提交摘要:</b>
