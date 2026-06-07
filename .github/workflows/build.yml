@@ -211,7 +211,7 @@ jobs:
             ├─ 小米 MIX 2S <code>(polaris)</code> / MIX 3 <code>(perseus)</code>
             └─ 小米 8 标准/探索/Pro <code>(dipper / ursa / equuleus)</code>
           <b>适用系统:</b> <code>类原生 ROM</code>
-          <b>源码仓库:</b> <code>${{ github.repository }}</code>
+          <b>源码仓库:</b> <a href='${{ github.server_url }}/${{ github.repository }}'>${{ github.repository }}</a>
           <b>ReSukiSU版本号:</b> <code>${{ needs.build.outputs.resukisu_ver }}</code>
           <b>编译时间:</b> <code>${{ steps.time.outputs.time }}</code>
           <b>提交描述:</b> <code>$SAFE_MSG</code> 
