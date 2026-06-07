@@ -204,6 +204,7 @@ jobs:
           fi
 
           # 重新设计的 HTML 多机型消息排版
+          SAFE_MSG=$(echo "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\\"/g')
           MSG="<b>New Release！</b>
           ──────────────────────
           <b>适用设备:</b>
