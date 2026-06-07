@@ -206,13 +206,13 @@ jobs:
           # 重新设计的 HTML 多机型消息排版
           MSG="<b>New Release！</b>
           ──────────────────────
-          <b>适用设备::</b>
+          <b>适用设备:</b>
             ├─ POCO F1 <code>(beryllium)</code>
             ├─ 小米 MIX 2S <code>(polaris)</code> / MIX 3 <code>(perseus)</code>
             └─ 小米 8 标准/探索/Pro <code>(dipper / ursa / equuleus)</code>
           <b>适用系统:</b> <code>类原生 ROM</code>
           <b>源码仓库:</b> <code>${{ github.repository }}</code>
-          <b>ReSukiSU版本号:</b> <code>${{ needs.build-kernel.outputs.resukisu_ver }}</code>
+          <b>ReSukiSU版本号:</b> <code>${{ needs.build.outputs.resukisu_ver }}</code>
           <b>编译时间:</b> <code>${{ steps.time.outputs.time }}</code>
           <b>提交描述:</b> <code>$SAFE_MSG</code> 
           <b>工作流详情:</b> <a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>点击前往查看</a>
