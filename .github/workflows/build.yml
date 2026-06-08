@@ -194,43 +194,28 @@ jobs:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
 
         run: |
-          # 1. 动态构建 sendMediaGroup 所需的 JSON 和文件映射参数
-          MEDIA_JSON="["
-          CURL_FILES=()
-          COUNT=0
-
-          for FILE in kernel/Anykernel3-*.zip; do
-            if [ -f "$FILE" ]; then
-              if [ $COUNT -gt 0 ]; then
-                MEDIA_JSON+=","
-              fi
-              # 构造类似 attach://file_0 的内部引用标识
-              MEDIA_JSON+="{\"type\":\"document\",\"media\":\"attach://file_$COUNT\"}"
-              CURL_FILES+=("-F" "file_$COUNT=@$FILE")
-              COUNT=$((COUNT + 1))
-            fi
-          done
-          MEDIA_JSON+="]"
-
-          # 如果没有文件，直接退出
-          if [ $COUNT -eq 0 ]; then
-            echo "未找到任何 Anykernel3 刷机包！"
-            exit 1
-          fi
-
-          # 2. 一键发送整组文件，并捕获这一组消息中第一个文件的 message_id
-          echo "正在批量上传 $COUNT 个内核文件..."
+          echo "正在批量上传内核文件..."
           RESPONSE=$(curl -LSs -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMediaGroup \
                 -F "chat_id=${{ vars.TELEGRAM_CHAT_ID }}" \
                 -F "message_thread_id=${{ vars.TELEGRAM_MESSAGE_THREAD_ID }}" \
-                -F "media=$MEDIA_JSON" \
-                "${CURL_FILES[@]}")
-
-          # sendMediaGroup 成功后返回的是一个消息数组，提取第一个消息的 ID 用于后续回复
+                -F 'media=[
+                  {"type":"document","media":"attach://f1"},
+                  {"type":"document","media":"attach://f2"},
+                  {"type":"document","media":"attach://f3"},
+                  {"type":"document","media":"attach://f4"},
+                  {"type":"document","media":"attach://f5"},
+                  {"type":"document","media":"attach://f6"}
+                ]' \
+                -F f1=@kernel/Anykernel3-polaris.zip \
+                -F f2=@kernel/Anykernel3-dipper.zip \
+                -F f3=@kernel/Anykernel3-perseus.zip \
+                -F f4=@kernel/Anykernel3-ursa.zip \
+                -F f5=@kernel/Anykernel3-beryllium.zip \
+                -F f6=@kernel/Anykernel3-equuleus.zip)
+          echo "$RESPONSE"
           LAST_MSG_ID=$(echo "$RESPONSE" | jq -r '.result[0].message_id // empty')
 
 
-          # 3. 提取并处理提交 ID（保持你原有的逻辑）
           IDS=(${{ join(github.event.commits.*.id, ' ') }})
           MAX=5
           if [ "${#IDS[@]}" -gt "$MAX" ]; then
@@ -239,7 +224,6 @@ jobs:
             COMMIT_IDS_TEXT="$(printf "• %s\n" "${IDS[@]}")"
           fi
 
-          # 4. 组装你的美化文本
           SAFE_MSG=$(echo "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\\"/g')
           MSG="<b>New Release！</b>
           ──────────────────────
@@ -269,10 +253,8 @@ jobs:
             --form-string "reply_markup=$BUTTONS"
           )
 
-          # 如果成功获取到了媒体组的 ID，则让文本消息强制引用（回复）它
           if [ -n "$LAST_MSG_ID" ]; then
             MSG_ARGS+=(--form-string "reply_to_message_id=$LAST_MSG_ID")
           fi
 
-          # 6. 发送最终的详细文本消息（带功能按钮并引用文件）
           curl -LSs -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage "${MSG_ARGS[@]}"
